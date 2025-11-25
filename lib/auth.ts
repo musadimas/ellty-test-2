@@ -18,16 +18,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
+
         const user = await prisma.user.findUnique({
           where: {
             email: credentials.email as string,
           },
         });
+
         if (!user || !user.password) return null;
+
         const isPasswordValid = await compare(credentials.password as string, user.password);
         if (!isPasswordValid) return null;
+
         return user;
       },
     }),
   ],
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token) {
+        session.user.id = token.id as string;
+        session.user.email = token.email as string;
+        session.user.name = token.name as string;
+      }
+      return session;
+    },
+  },
 });

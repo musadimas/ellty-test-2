@@ -1,15 +1,16 @@
-import PostCard from "@/components/post-card";
-import Link from "next/link";
-import React from "react";
+import { PostList } from "@/components/post-lists";
+import { Post } from "@/hooks/use-posts";
+import { notFound } from "next/navigation";
 
-export default function PostById() {
-  return (
-    <div className='max-w-5xl mx-auto space-y-4 py-10'>
-      {Array.from({ length: 10 }).map((_, i) => (
-        <Link href={`${1}`} key={i}>
-          <PostCard username={`User ${i + 1}`} post={`Post ${i + 1}`} />
-        </Link>
-      ))}
-    </div>
-  );
+async function fetchPost(id: string): Promise<Post> {
+  const res = await fetch(`/api/post/${id}`);
+  if (!res.ok) throw new Error("Failed to fetch post");
+  return res.json();
+}
+
+export default async function PostByID({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const post = await fetchPost(id);
+  if (!post) return notFound();
+  return <PostList id={id} initialPost={post} />;
 }

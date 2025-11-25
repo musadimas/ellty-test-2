@@ -1,16 +1,5 @@
-import PostCard from "@/components/post-card";
-import Image from "next/image";
-import Link from "next/link";
+import { PostList } from "@/components/post-lists";
 
 export default function Home() {
-  return (
-    <div className='max-w-5xl mx-auto space-y-4 pb-10'>
-      <h1 className='text-center font-bold text-4xl pb-10 pt-20'>Posts Tree</h1>
-      {Array.from({ length: 10 }).map((_, i) => (
-        <Link href={`${1}`} key={i}>
-          <PostCard username={`User ${i + 1}`} post={`Post ${i + 1}`} />
-        </Link>
-      ))}
-    </div>
-  );
+  return <PostList />;
 }
