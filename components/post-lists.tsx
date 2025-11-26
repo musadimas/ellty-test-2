@@ -248,6 +248,7 @@ export function PostList({ id, initialPost, parentChain = [] }: { id?: string; i
               username={initialPost.author.name || initialPost.author.email || "Unknown"}
               post={initialPost.result}
               repliesCount={initialPost._count.children}
+              isHighlighted
               replyTo={parentChain.length > 0 ? parentChain[parentChain.length - 1].author.email || parentChain[parentChain.length - 1].author.name || parentChain[parentChain.length - 1].author.id : null}
             />
           )}

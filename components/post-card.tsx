@@ -40,8 +40,8 @@ export default function PostCard({
 
   return (
     <>
-      <div {...props} className={clsx("border drop-shadow p-4 border-gray-200", isHighlighted ? "bg-blue-500/10" : "bg-white", props.className)}>
-        <Link href={id} aria-disabled={isHighlighted} className={clsx("flex gap-4", "cursor-default")} onMouseEnter={handlePrefetch}>
+      <div {...props} className={clsx("border drop-shadow p-4 border-gray-200", isHighlighted ? "bg-blue-100" : "bg-white", props.className)}>
+        <Link href={id} className={clsx("flex gap-4", { "cursor-default": !!isHighlighted })} onMouseEnter={handlePrefetch}>
           <div className='rounded bg-gray-200 size-20 grid place-content-center '>
             <UserIcon className='text-gray-500' />
           </div>

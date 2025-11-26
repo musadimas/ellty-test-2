@@ -113,7 +113,7 @@ When viewing a specific post:
 1. Install dependencies:
 
 ```bash
-pnpm install
+npm install
 ```
 
 2. Set up your `.env`:
@@ -127,13 +127,13 @@ NEXT_PUBLIC_APP_URL="your-app-url"
 3. Run Prisma migrations:
 
 ```bash
-pnpm prisma migrate dev
+npx prisma migrate dev
 ```
 
 4. Start the dev server:
 
 ```bash
-pnpm dev
+npm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) and start posting!
