@@ -181,7 +181,7 @@ Generate SVG React components:
 npx @svgr/cli --out-dir ./public/icons --ignore-existing ./components/icons
 ```
 
-## Why Build This?
+## What Do I Learn From IT?
 
 Honestly? Threading is hard. Most tutorials show you basic CRUD, but threaded discussions with proper caching, parent chains, and real-time updates? That's where it gets interesting.
 
