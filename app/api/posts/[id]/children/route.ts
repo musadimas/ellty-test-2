@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma";
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id: parentId } = params;
+    const { id: parentId } = await params;
 
     const searchParams = request.nextUrl.searchParams;
     const cursor = searchParams.get("cursor");
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     return NextResponse.json({
-      children,
+      posts: children,
       nextCursor,
     });
   } catch (error) {

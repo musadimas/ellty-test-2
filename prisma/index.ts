@@ -1,10 +1,6 @@
-import { PrismaClient } from "./generated/client";
+import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { withAccelerate } from "@prisma/extension-accelerate";
-
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient;
-};
 
 function createPrismaClient() {
   const adapter = new PrismaPg({
@@ -12,6 +8,10 @@ function createPrismaClient() {
   });
   return new PrismaClient({ adapter }).$extends(withAccelerate());
 }
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: ReturnType<typeof createPrismaClient>;
+};
 
 export const prisma = globalForPrisma.prisma || createPrismaClient();
 

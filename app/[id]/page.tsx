@@ -1,16 +1,15 @@
 import { PostList } from "@/components/post-lists";
-import { Post } from "@/hooks/use-posts";
 import { notFound } from "next/navigation";
-
-async function fetchPost(id: string): Promise<Post> {
-  const res = await fetch(`/api/post/${id}`);
-  if (!res.ok) throw new Error("Failed to fetch post");
-  return res.json();
-}
+import { QueryClient } from "@tanstack/react-query";
+import { prefetchPost, prefetchParentChain } from "@/lib/prefetch";
 
 export default async function PostByID({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const post = await fetchPost(id);
+  const queryClient = new QueryClient();
+
+  const [post, parents] = await Promise.all([prefetchPost(queryClient, id), prefetchParentChain(id)]);
+
   if (!post) return notFound();
-  return <PostList id={id} initialPost={post} />;
+
+  return <PostList id={id} initialPost={post} parentChain={parents} />;
 }

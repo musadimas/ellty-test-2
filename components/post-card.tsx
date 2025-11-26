@@ -6,29 +6,42 @@ import clsx from "clsx";
 import PostForm from "./post-form";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
+import { prefetchChildren } from "@/lib/prefetch";
+import { useRouter } from "next/navigation";
 
 export default function PostCard({
   id,
   username,
   post,
   replyTo,
+  repliesCount = 0,
+  isHighlighted = false,
   ...props
 }: React.DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement> & {
   id: string;
   username: string;
-  post: string;
-  replyTo?: string;
+  post: number;
+  replyTo?: string | null;
+  repliesCount?: number;
+  isHighlighted?: boolean;
 }) {
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
+  const router = useRouter();
 
   const [showReplyBox, setShowReplyBox] = useState<boolean>(false);
 
   const handleOnboardReply = () => setShowReplyBox((prev) => !prev);
 
+  const handlePrefetch = () => {
+    prefetchChildren(queryClient, id);
+  };
+
   return (
     <>
-      <div {...props} className={clsx("bg-white border drop-shadow p-4 border-gray-200", props.className)}>
-        <Link href={id} className='flex gap-4'>
+      <div {...props} className={clsx("border drop-shadow p-4 border-gray-200", isHighlighted ? "bg-blue-500/10" : "bg-white", props.className)}>
+        <Link href={id} aria-disabled={isHighlighted} className={clsx("flex gap-4", "cursor-default")} onMouseEnter={handlePrefetch}>
           <div className='rounded bg-gray-200 size-20 grid place-content-center '>
             <UserIcon className='text-gray-500' />
           </div>
@@ -39,6 +52,11 @@ export default function PostCard({
                 {replyTo && <p className='text-xs text-gray-500'>reply to {replyTo}</p>}
               </div>
               <p className='text-sm'>{post}</p>
+              {repliesCount > 0 && (
+                <p className='text-xs text-gray-500'>
+                  {repliesCount} {repliesCount === 1 ? "reply" : "replies"}
+                </p>
+              )}
             </div>
           </div>
         </Link>
@@ -57,7 +75,18 @@ export default function PostCard({
         )}
       </div>
 
-      {showReplyBox && session && <PostForm authorId={session.user?.id || ""} mode='reply' onSuccess={() => setShowReplyBox(false)} onCancel={() => setShowReplyBox(false)} />}
+      {showReplyBox && session && (
+        <PostForm
+          parentId={id}
+          authorId={session.user?.id || ""}
+          mode='reply'
+          onSuccess={() => {
+            setShowReplyBox(false);
+            router.push(id);
+          }}
+          onCancel={() => setShowReplyBox(false)}
+        />
+      )}
     </>
   );
 }

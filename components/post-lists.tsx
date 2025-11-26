@@ -9,10 +9,12 @@ import NewDataButton from "@/components/new-data-button";
 import clsx from "clsx";
 import usePosts, { Post, PostsResponse } from "@/hooks/use-posts";
 import { notFound } from "next/navigation";
+import { usePostCache } from "@/store/post-cache";
 
-export function PostList({ id, initialPost }: { id?: string; initialPost?: Post }) {
+export function PostList({ id, initialPost, parentChain = [] }: { id?: string; initialPost?: Post; parentChain?: Post[] }) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
+  const postCache = usePostCache();
   const [showNewDataButton, setShowNewDataButton] = useState(false);
   const [showPostForm, setShowPostForm] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -20,11 +22,34 @@ export function PostList({ id, initialPost }: { id?: string; initialPost?: Post 
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, error } = usePosts(id);
 
-  // Polling mechanism - check for new data every 3 minutes
+  // add initialPost and parentChain to cache
+  useEffect(() => {
+    if (initialPost) {
+      postCache.setPost(initialPost);
+    }
+    if (parentChain.length > 0) {
+      parentChain.forEach((parent) => postCache.setPost(parent));
+    }
+  }, [initialPost, parentChain]);
+
+  useEffect(() => {
+    if (data?.pages && data.pages.length > 0) {
+      const allPosts = data.pages.flatMap((page) => page.posts);
+      if (allPosts.length > 0) {
+        const latestPostDate = new Date(allPosts[0].createdAt);
+        if (latestPostDate > lastFetchTimeRef.current) {
+          lastFetchTimeRef.current = latestPostDate;
+        }
+      }
+    }
+  }, [data]);
+
+  // check for new data every 3 minutes
   useEffect(() => {
     const checkForNewData = async () => {
       try {
-        const res = await fetch("/api/posts?limit=1");
+        const endpoint = initialPost ? `/api/posts/${initialPost.id}/children?limit=1` : "/api/posts?limit=1";
+        const res = await fetch(endpoint);
         if (!res.ok) return;
 
         const newData: PostsResponse = await res.json();
@@ -32,10 +57,10 @@ export function PostList({ id, initialPost }: { id?: string; initialPost?: Post 
           const latestPost = newData.posts[0];
           const latestPostDate = new Date(latestPost.createdAt);
 
-          // Check if there's a newer post than our last fetch
+          // check for newer post than our last fetch
           if (latestPostDate > lastFetchTimeRef.current) {
             setShowNewDataButton(true);
-            // Stop the interval when new data is detected
+            // stop the interval when new data is detected
             if (pollingIntervalRef.current) {
               clearInterval(pollingIntervalRef.current);
               pollingIntervalRef.current = null;
@@ -47,7 +72,7 @@ export function PostList({ id, initialPost }: { id?: string; initialPost?: Post 
       }
     };
 
-    // Start polling every 3 minutes (180000ms)
+    // polling every 3 minutes
     pollingIntervalRef.current = setInterval(checkForNewData, 180000);
 
     return () => {
@@ -55,7 +80,7 @@ export function PostList({ id, initialPost }: { id?: string; initialPost?: Post 
         clearInterval(pollingIntervalRef.current);
       }
     };
-  }, []);
+  }, [initialPost]);
 
   const handleNewDataClick = () => {
     lastFetchTimeRef.current = new Date();
@@ -68,7 +93,8 @@ export function PostList({ id, initialPost }: { id?: string; initialPost?: Post 
     }
     pollingIntervalRef.current = setInterval(async () => {
       try {
-        const res = await fetch("/api/posts?limit=1");
+        const endpoint = initialPost ? `/api/posts/${initialPost.id}/children?limit=1` : "/api/posts?limit=1";
+        const res = await fetch(endpoint);
         if (!res.ok) return;
 
         const newData: PostsResponse = await res.json();
@@ -90,9 +116,71 @@ export function PostList({ id, initialPost }: { id?: string; initialPost?: Post 
     }, 180000);
   };
 
+  // get posts from query or normalized cache as fallback
   const allPosts = data?.pages.flatMap((page) => page.posts) ?? [];
 
+  // merge with cache if needed
+  const cachedPosts = id ? postCache.getChildren(id) : postCache.getRootPosts();
+  const mergedPosts = allPosts.length > 0 ? allPosts : cachedPosts;
+
   if (isLoading) {
+    // try to show cached data while loading
+    const cachedData = id ? postCache.getChildren(id) : postCache.getRootPosts();
+
+    if (cachedData.length > 0) {
+      // show cached data immediately
+      return (
+        <div className='max-w-5xl mx-auto space-y-4 pb-10'>
+          {showNewDataButton && <NewDataButton onClick={handleNewDataClick} />}
+
+          <h1 className='text-center font-bold text-4xl pb-10 pt-20'>Posts Tree</h1>
+
+          {session && (
+            <div className='mb-6'>
+              {!showPostForm ? (
+                <button onClick={() => setShowPostForm(true)} className={clsx("cursor-pointer w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-colors font-medium", { hidden: cachedData.length === 0 || !!id })}>
+                  Create New Post
+                </button>
+              ) : (
+                <PostForm authorId={session.user?.id || ""} onSuccess={() => setShowPostForm(false)} onCancel={() => setShowPostForm(false)} />
+              )}
+            </div>
+          )}
+
+          {parentChain.map((parent: Post, index: number) => (
+            <PostCard
+              key={parent.id}
+              id={parent.id}
+              username={parent.author.name || parent.author.email || "Unknown"}
+              post={parent.result}
+              repliesCount={parent._count.children}
+              replyTo={index > 0 ? parentChain[index - 1].author.email || parentChain[index - 1].author.name || parentChain[index - 1].author.id : null}
+            />
+          ))}
+          {initialPost && (
+            <PostCard
+              key={initialPost.id}
+              id={initialPost.id}
+              username={initialPost.author.name || initialPost.author.email || "Unknown"}
+              post={initialPost.result}
+              repliesCount={initialPost._count.children}
+              replyTo={parentChain.length > 0 ? parentChain[parentChain.length - 1].author.email || parentChain[parentChain.length - 1].author.name || parentChain[parentChain.length - 1].author.id : null}
+            />
+          )}
+          {cachedData.map((post: Post) => (
+            <PostCard
+              key={post.id}
+              id={post.id}
+              username={post.author.name || post.author.email || "Unknown"}
+              post={post.result}
+              repliesCount={post._count.children}
+              replyTo={initialPost ? initialPost.author.email || initialPost.author.name || initialPost.author.id : null}
+            />
+          ))}
+        </div>
+      );
+    }
+
     return (
       <div className='max-w-5xl mx-auto space-y-4 pb-10'>
         <h1 className='text-center font-bold text-4xl pb-10 pt-20'>Posts Tree</h1>
@@ -121,7 +209,7 @@ export function PostList({ id, initialPost }: { id?: string; initialPost?: Post 
       {session && (
         <div className='mb-6'>
           {!showPostForm ? (
-            <button onClick={() => setShowPostForm(true)} className={clsx("cursor-pointer w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-colors font-medium", { hidden: allPosts.length === 0 || !!id })}>
+            <button onClick={() => setShowPostForm(true)} className={clsx("cursor-pointer w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-colors font-medium", { hidden: mergedPosts.length === 0 || !!id })}>
               Create New Post
             </button>
           ) : (
@@ -130,7 +218,7 @@ export function PostList({ id, initialPost }: { id?: string; initialPost?: Post 
         </div>
       )}
 
-      {allPosts.length === 0 ? (
+      {mergedPosts.length === 0 && !initialPost ? (
         <div className='text-center py-20'>
           <p className='text-gray-600 mb-4'>No posts yet</p>
           {session ? (
@@ -143,9 +231,35 @@ export function PostList({ id, initialPost }: { id?: string; initialPost?: Post 
         </div>
       ) : (
         <>
-          {initialPost && <PostCard key={initialPost.id} id={initialPost.id} username={initialPost.author.name || initialPost.author.email || "Unknown"} post={`${initialPost.operation || ""} ${initialPost.value}`} />}
-          {allPosts.map((post) => (
-            <PostCard key={post.id} id={post.id} username={post.author.name || post.author.email || "Unknown"} post={`${post.operation || ""} ${post.value}`} />
+          {parentChain.map((parent: Post, index: number) => (
+            <PostCard
+              key={parent.id}
+              id={parent.id}
+              username={parent.author.name || parent.author.email || "Unknown"}
+              post={parent.result}
+              repliesCount={parent._count.children}
+              replyTo={index > 0 ? parentChain[index - 1].author.email || parentChain[index - 1].author.name || parentChain[index - 1].author.id : null}
+            />
+          ))}
+          {initialPost && (
+            <PostCard
+              key={initialPost.id}
+              id={initialPost.id}
+              username={initialPost.author.name || initialPost.author.email || "Unknown"}
+              post={initialPost.result}
+              repliesCount={initialPost._count.children}
+              replyTo={parentChain.length > 0 ? parentChain[parentChain.length - 1].author.email || parentChain[parentChain.length - 1].author.name || parentChain[parentChain.length - 1].author.id : null}
+            />
+          )}
+          {mergedPosts.map((post: Post) => (
+            <PostCard
+              key={post.id}
+              replyTo={initialPost ? initialPost.author.email || initialPost.author.name || initialPost.author.id : null}
+              id={post.id}
+              username={post.author.name || post.author.email || "Unknown"}
+              post={post.result}
+              repliesCount={post._count.children}
+            />
           ))}
 
           {hasNextPage && (

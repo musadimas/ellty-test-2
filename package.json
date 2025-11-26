@@ -10,8 +10,10 @@
     "icons": "npx @svgr/cli --out-dir ./components/icons  --ignore-existing ./public/icons",
     "prs:init": "npx prisma init --output ./generated",
     "prs:gen": "pnpm exec prisma generate",
-    "prs:mg": "pnpm exec prisma migrate dev",
-    "prs:push": "pnpm exec prisma db push"
+    "prs:mgd": "pnpm exec prisma migrate dev",
+    "prs:mgp": "pnpm exec prisma migrate deploy",
+    "prs:push": "pnpm exec prisma db push",
+    "initiate": "pnpm install && pnpm prs:gen"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
@@ -27,7 +29,8 @@
     "pg": "^8.16.3",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "zod": "^4.1.13"
+    "zod": "^4.1.13",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@svgr/cli": "^8.1.0",

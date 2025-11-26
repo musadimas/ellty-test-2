@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 
 interface PostFormProps {
   authorId: string;
@@ -12,10 +12,8 @@ interface PostFormProps {
 }
 
 export default function PostForm({ authorId, parentId, mode = "post", onSuccess, onCancel }: PostFormProps) {
-  const [value, setValue] = useState("");
-  const [operation, setOperation] = useState("");
   const queryClient = useQueryClient();
-  console.log({ authorId });
+  const formRef = useRef<HTMLFormElement>(null);
 
   const isReply = mode === "reply" || !!parentId;
 
@@ -39,14 +37,17 @@ export default function PostForm({ authorId, parentId, mode = "post", onSuccess,
       if (parentId) {
         queryClient.invalidateQueries({ queryKey: ["post", parentId] });
       }
-      setValue("");
-      setOperation("");
+      formRef.current?.reset();
       onSuccess?.();
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    const formData = new FormData(e.currentTarget);
+    const value = formData.get("value") as string;
+    const operation = formData.get("operation") as string;
 
     const numValue = parseFloat(value);
     if (isNaN(numValue)) {
@@ -68,7 +69,7 @@ export default function PostForm({ authorId, parentId, mode = "post", onSuccess,
   };
 
   return (
-    <form onSubmit={handleSubmit} className='bg-white rounded border-gray-200 p-4 border drop-shadow space-y-4'>
+    <form ref={formRef} onSubmit={handleSubmit} className='bg-white rounded border-gray-200 p-4 border drop-shadow space-y-4'>
       <h2 className='text-xl font-bold'>{isReply ? "Add Reply" : "Create New Post"}</h2>
 
       <div>
@@ -79,8 +80,7 @@ export default function PostForm({ authorId, parentId, mode = "post", onSuccess,
           type='number'
           step='any'
           id='value'
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
+          name='value'
           className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
           placeholder='Enter a number'
           required
@@ -93,7 +93,7 @@ export default function PostForm({ authorId, parentId, mode = "post", onSuccess,
           <label htmlFor='operation' className='block text-sm font-medium text-gray-700 mb-1'>
             Operation <span className='text-red-500'>*</span>
           </label>
-          <select required name='operation' id='operation' className='cursor-pointer w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'>
+          <select required name='operation' id='operation' className='cursor-pointer w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500' disabled={createPostMutation.isPending}>
             <option value='+'>Add</option>
             <option value='-'>Substract</option>
             <option value='/'>Divide</option>
