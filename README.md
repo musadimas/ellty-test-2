@@ -194,4 +194,4 @@ This assignment explores:
 
 Plus it's kinda fun watching numbers calculate as you thread replies deeper and deeper.
 
-tbh its just a counting thread clone with twitter style render lmao
+tbh it's just a counting thread clone with twitter style render lmao
