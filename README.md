@@ -193,5 +193,3 @@ This assignment explores:
 - Building a "backend" without leaving Next.js
 
 Plus it's kinda fun watching numbers calculate as you thread replies deeper and deeper.
-
-tbh it's just a counting thread clone with twitter style render lmao
